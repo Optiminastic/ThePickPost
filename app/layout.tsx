@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const bodoni = Bodoni_Moda({
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className="min-h-full bg-paper text-ink">
         {/* Full white background, wide centered content — no framed margin. */}
         <div className="mx-auto w-full max-w-[88rem]">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
