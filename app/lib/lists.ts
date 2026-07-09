@@ -1,4 +1,4 @@
-// Data layer for Roundup — the curated listicle journal.
+// Data layer for The Pick Post — the curated listicle journal.
 // Single source of truth for ranked list blog posts. Presentation components
 // depend on these types, never the other way around.
 

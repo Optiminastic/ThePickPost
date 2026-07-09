@@ -4,16 +4,24 @@ import { notFound } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import SiteFooter from "@/app/components/SiteFooter";
 import CoverTile from "@/app/components/CoverTile";
+import JsonLd from "@/app/components/JsonLd";
 import {
   getAllSlugs,
   getListBySlug,
   formatDate as formatListDate,
+  type Listicle,
 } from "@/app/lib/lists";
 import {
   getPosts,
   getPostBySlug,
   formatDate as formatDbDate,
 } from "@/app/lib/blog-db";
+import {
+  SITE_URL,
+  SITE_NAME,
+  OG_IMAGE,
+  toMetaDescription,
+} from "@/app/lib/seo";
 
 export const revalidate = 300;
 
@@ -29,11 +37,105 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const canonical = `/${slug}`;
+
   const list = getListBySlug(slug);
-  if (list) return { title: `${list.title} — Roundup`, description: list.excerpt };
+  if (list) {
+    const description = toMetaDescription(list.excerpt);
+    return {
+      title: list.title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: "article",
+        title: list.title,
+        description,
+        url: `${SITE_URL}${canonical}`,
+        siteName: SITE_NAME,
+        publishedTime: list.date,
+        authors: [list.author],
+        images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: list.title }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: list.title,
+        description,
+        images: [OG_IMAGE],
+      },
+    };
+  }
+
   const post = await getPostBySlug(slug);
-  if (post) return { title: post.title, description: post.description };
-  return { title: "Not found" };
+  if (post) {
+    const description = toMetaDescription(post.description || post.content_html);
+    const image = post.image_url || OG_IMAGE;
+    return {
+      title: post.title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: "article",
+        title: post.title,
+        description,
+        url: `${SITE_URL}${canonical}`,
+        siteName: SITE_NAME,
+        publishedTime: post.published_at ?? undefined,
+        images: [{ url: image, width: 1200, height: 630, alt: post.title }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: post.title,
+        description,
+        images: [image],
+      },
+    };
+  }
+
+  return { title: "Not found", robots: { index: false } };
+}
+
+/** BlogPosting structured data shared by both content types. */
+function blogPostingLd(opts: {
+  slug: string;
+  title: string;
+  description: string;
+  image: string;
+  datePublished?: string;
+  author: string;
+}): Record<string, unknown> {
+  const url = `${SITE_URL}/${opts.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: opts.title,
+    description: opts.description,
+    image: [opts.image],
+    ...(opts.datePublished ? { datePublished: opts.datePublished } : {}),
+    author: { "@type": "Person", name: opts.author },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon.svg` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    url,
+  };
+}
+
+/** ItemList structured data for a ranked listicle's entries. */
+function itemListLd(list: Listicle): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: list.title,
+    numberOfItems: list.entries.length,
+    itemListElement: list.entries.map((entry, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: entry.name,
+      description: entry.blurb,
+    })),
+  };
 }
 
 export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -44,6 +146,19 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   if (list) {
     return (
       <>
+        <JsonLd
+          data={[
+            blogPostingLd({
+              slug: list.slug,
+              title: list.title,
+              description: toMetaDescription(list.excerpt),
+              image: OG_IMAGE,
+              datePublished: list.date,
+              author: list.author,
+            }),
+            itemListLd(list),
+          ]}
+        />
         <TopNav />
         <main className="flex-1">
           <article className="mx-auto max-w-3xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
@@ -117,6 +232,16 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   return (
     <>
+      <JsonLd
+        data={blogPostingLd({
+          slug: post.slug,
+          title: post.title,
+          description: toMetaDescription(post.description || post.content_html),
+          image: post.image_url || OG_IMAGE,
+          datePublished: post.published_at ?? undefined,
+          author: SITE_NAME,
+        })}
+      />
       <TopNav />
       <main className="flex-1">
         <article className="mx-auto max-w-3xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
@@ -135,7 +260,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           {post.image_url ? (
             <div className="mt-8 overflow-hidden border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={post.image_url} alt={post.title} className="w-full object-cover" />
+              <img
+                src={post.image_url}
+                alt={`Cover image for ${post.title}`}
+                className="w-full object-cover"
+              />
             </div>
           ) : null}
           <div

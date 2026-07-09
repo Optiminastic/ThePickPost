@@ -1,16 +1,18 @@
 import Link from "next/link";
-import type { Listicle } from "@/app/lib/lists";
 import { dateBlock } from "@/app/lib/lists";
+import type { FeedItem } from "@/app/lib/feed";
 import CoverTile from "./CoverTile";
 
-// One list rendered as a magazine "event" row: a date stamp, a thumbnail, the
-// title + meta + description, and an orange jump arrow.
-export default function EventRow({ list }: { list: Listicle }) {
-  const date = dateBlock(list.date);
+// One feed item — a curated list OR a published Signalor post — rendered as a
+// magazine "event" row: a date stamp, a generative thumbnail, the title + meta +
+// excerpt, and an orange jump arrow. Same card for every entry on the homepage.
+export default function EventRow({ item }: { item: FeedItem }) {
+  const date = dateBlock(item.date);
+  const meta = item.kind === "list" ? `${item.count} picks` : "Article";
 
   return (
     <Link
-      href={`/${list.slug}`}
+      href={`/${item.slug}`}
       className="group grid grid-cols-[3rem_1fr] gap-x-4 border-b border-line py-6 sm:grid-cols-[4.5rem_13rem_1fr_2rem] sm:gap-x-6 sm:py-7"
     >
       {/* Date block */}
@@ -26,8 +28,8 @@ export default function EventRow({ list }: { list: Listicle }) {
       <div className="relative col-span-2 mt-3 sm:col-span-1 sm:mt-0">
         <div className="relative aspect-[4/3] w-full overflow-hidden">
           <CoverTile
-            slug={list.slug}
-            count={list.count}
+            slug={item.slug}
+            count={item.count ?? 0}
             showRank={false}
             className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105"
           />
@@ -40,15 +42,15 @@ export default function EventRow({ list }: { list: Listicle }) {
       {/* Content */}
       <div className="col-span-2 mt-4 sm:col-span-1 sm:mt-0">
         <h3 className="font-display text-2xl font-semibold uppercase leading-[0.95] tracking-tight text-ink transition-colors group-hover:text-accent sm:text-3xl">
-          {list.title}
+          {item.title}
         </h3>
 
         <div className="mt-2 flex items-center gap-1.5 text-ink-soft">
-          <span className="text-sm">{list.count} picks</span>
+          <span className="text-sm">{meta}</span>
         </div>
 
         <p className="clamp-2 mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-          {list.excerpt}
+          {item.excerpt}
         </p>
       </div>
 

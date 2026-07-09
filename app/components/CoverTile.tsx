@@ -52,7 +52,7 @@ export default function CoverTile({
       className={className}
       preserveAspectRatio="xMidYMid slice"
       role="img"
-      aria-label={`Cover artwork for a top ${count} list`}
+      aria-label={count ? `Cover artwork for a top ${count} list` : "Cover artwork"}
     >
       <rect width="300" height="300" fill={palette.bg} />
 
